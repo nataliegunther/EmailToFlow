@@ -1,142 +1,49 @@
-/* @author: Munawir
- * @authorEmail: munawirrahman@gmail.com
- * @Full Documentation: https://munawirrahman.medium.com/email-to-flow-in-salesforce-ba8e300f9672
- * @Description: Email Service Router to Salesforce Flow Builder
- */
+@isTest
+public class EmailToFlowTest {
+    public static testMethod void TestInboundEmail(){
+        // create a new email and envelope object
+        Messaging.InboundEmail email = new Messaging.InboundEmail() ;
+        Messaging.InboundEnvelope env = new Messaging.InboundEnvelope();
+        env.fromAddress = 'myemail@example.com';
+        env.toAddress = 'youremail@example.com';
+        email.fromAddress = 'myemail@example.com';
+        email.ToAddresses = new List<string>{'youremail@example.com','youremail1@example.com','youremail2@example.com'};
+        email.fromName = 'test inbound email';
+        email.fromAddress = 'myemail@example.com';
+        email.ccAddresses = new List<string>{'youremail3@example.com','youremail4@example.com'};
+        email.subject = 'Test Email To Flow';
+        email.replyTo = '';
+        email.inReplyTo = '';
+        email.messageId = 'testMessageId';
+        email.references = new List<string>{''};
+        email.htmlBody = 'Hello, <br/> World';
+        email.plainTextBody = 'Hello, World';
+        email.messageId = 'ABCDEFGHIJKL=5s03sP262OV+YG+pxA@mail.example.com';
+        
+        Test.startTest();
+        
+        //test without attachments
+        EmailToFlow EmailToFlowObj = new EmailToFlow();
+        EmailToFlowObj.handleInboundEmail(email, env);
+        
+        //create binary attachment
+        Messaging.InboundEmail.BinaryAttachment attachment = new Messaging.InboundEmail.BinaryAttachment();
+        attachment.body = blob.valueOf('my attachment text');
+        attachment.fileName = 'textfileone.txt';
+        attachment.mimeTypeSubType = 'text/plain';
+        email.binaryAttachments = new Messaging.inboundEmail.BinaryAttachment[] { attachment };
+            
+        //create text attachment
+        Messaging.InboundEmail.TextAttachment attachmenttext = new Messaging.InboundEmail.TextAttachment();
+        attachmenttext.body = 'my attachment text';
+        attachmenttext.fileName = 'textfiletwo3.txt';
+        attachmenttext.mimeTypeSubType = 'texttwo/plain';
+        email.textAttachments =   new Messaging.inboundEmail.TextAttachment[] { attachmenttext };
+        
+        //retest with Attachments
+        Messaging.InboundEmailResult EmailToFlowResult = EmailToFlowObj.handleInboundEmail(email, env);
+        system.assertEquals(True, EmailToFlowResult.success);
+        Test.stopTest();
+    }
 
-global class EmailToFlow implements Messaging.inboundEmailHandler{
- 
-    global Messaging.InboundEmailResult handleInboundEmail(Messaging.InboundEmail email, Messaging.InboundEnvelope env) {
-        Messaging.InboundEmailResult result = new Messaging.InboundEmailResult();
-        
-        //Assigning values from email and envelope to variable make it easier to read
-        String Envelope_FromAddress = env.FromAddress;
-        String Envelope_ToAddress = env.ToAddress;
-        List<String> Email_ToAddresses = email.ToAddresses;
-        String Email_FromName = email.FromName;
-        String Email_FromAddress = email.FromAddress;
-        List<String> Email_CCAddresses = email.CCAddresses;
-        String Email_Subject = email.Subject;
-        String Email_ReplyTo = email.ReplyTo;
-        String Email_InReplyTo = email.InReplyTo;
-        String Email_MessageId = email.MessageId;
-        List<String> Email_References = email.References;
-        String Email_HTMLBody = email.HTMLBody;
-        Boolean Email_IsHTMLTruncated = email.HTMLBodyIsTruncated;
-        String Email_TextBody = email.PlainTextBody;
-        Boolean Email_IsTextBodyTruncated = email.PlainTextBodyIsTruncated;
-        List<ContentVersion>Email_ContentVersion = ConvertAttachmentsToCV(email);
-        
-        Map<String, Object> MapFlow = new Map<String, Object>();
-        MapFlow.put('Envelope_FromAddress', Envelope_FromAddress);
-        System.debug('Input to Flow var Envelope_FromAddress: '+ Envelope_FromAddress);
-        
-        MapFlow.put('Envelope_ToAddress', Envelope_ToAddress);
-        System.debug('Input to Flow var Envelope_ToAddress: '+ Envelope_ToAddress);
-        
-        MapFlow.put('Email_ToAddresses', Email_ToAddresses);
-        System.debug('Input to Flow var Email_ToAddresses: '+ Email_ToAddresses);
-        
-        MapFlow.put('Email_FromName', Email_FromName);
-        System.debug('Input to Flow var Email_FromName: '+ Email_FromName);
-        
-        MapFlow.put('Email_FromAddress', Email_FromAddress);
-        System.debug('Input to Flow var Email_FromAddress: '+ Email_FromAddress);
-        
-        MapFlow.put('Email_CCAddresses', Email_CCAddresses);
-        System.debug('Input to Flow var Email_CCAddresses: '+ Email_CCAddresses);
-        
-        MapFlow.put('Email_Subject', Email_Subject);
-        System.debug('Input to Flow var Email_Subject: '+ Email_Subject);
-        
-        MapFlow.put('Email_ReplyTo', Email_ReplyTo);
-        System.debug('Input to Flow var Email_ReplyTo: '+ Email_ReplyTo);
-        
-        MapFlow.put('Email_MessageId', Email_MessageId);
-        System.debug('Input to Flow var Email_MessageId: '+ Email_MessageId);
-        
-        MapFlow.put('Email_References', Email_References);
-        System.debug('Input to Flow var Email_References: '+ Email_References);
-        
-        MapFlow.put('Email_HTMLBody', Email_HTMLBody);
-        System.debug('Input to Flow var Email_HTMLBody: '+ Email_HTMLBody);
-        
-        MapFlow.put('Email_IsHTMLTruncated', Email_IsHTMLTruncated);
-        System.debug('Input to Flow var Email_IsHTMLTruncated: '+ Email_IsHTMLTruncated);
-        
-        MapFlow.put('Email_TextBody', Email_TextBody);
-        System.debug('Input to Flow var Email_TextBody: '+ Email_TextBody);
-        
-        MapFlow.put('Email_IsTextBodyTruncated', Email_IsTextBodyTruncated);
-        System.debug('Input to Flow var Email_IsTextBodyTruncated: '+ Email_IsTextBodyTruncated);
-        
-        MapFlow.put('Email_ContentVersion',Email_ContentVersion);
-        System.debug('Input to Flow var Email_ContentVersion: '+ Email_ContentVersion);
-        
-        System.debug('Running flow...');
-        
-        //EmailToFlowController = autolaunched flow api name
-        Flow.Interview.EmailToFlowController myFlow = new Flow.Interview.EmailToFlowController(MapFlow);
-        myFlow.start();
-        System.debug('Flow finished.');
-        
-        //AutoReply Email to Sender but AutoReplyMessage should be assigned in flow
-        if(myFlow.AutoReplyMessage != Null){
-            Messaging.SingleEmailMessage AutoReply = new Messaging.SingleEmailMessage();
-            List<String> AutoReplyToAddresses = new List<String>{Email_fromAddress};
-            AutoReply.setToAddresses(AutoReplyToAddresses);
-            AutoReply.setCcAddresses(Email_CCAddresses);
-            AutoReply.setInReplyTo(Email_messageId);
-            AutoReply.setSubject(Email_Subject);
-            AutoReply.setHtmlBody(myFlow.AutoReplyMessage);
-            Messaging.SingleEmailMessage[] AutoReplyMessages = new List<Messaging.SingleEmailMessage> {AutoReply};
-            IF (checkEmailDeliverability()) {
-                Messaging.sendEmail(AutoReplyMessages);
-            }
-        }
-        return result;
-    }
-    
-    private boolean checkEmailDeliverability(){
-        Boolean EmailDeliverabilityEnabled = true;
-        try {
-            Messaging.reserveSingleEmailCapacity(1);
-            Messaging.reserveMassEmailCapacity(1);
-        } catch (System.NoAccessException e) {
-            EmailDeliverabilityEnabled = false;
-        }
-        return EmailDeliverabilityEnabled;
-    }
-    
-    //Convert All Attachments to List of ContentVersion
-    private static List<ContentVersion>ConvertAttachmentsToCV(Messaging.InboundEmail email){
-        List<ContentVersion>CVRecords = new List<ContentVersion>();
-        //Convert binary attachments to ContentVersion
-        if (email.BinaryAttachments != null && !email.BinaryAttachments.isEmpty()){
-            for (Messaging.InboundEmail.BinaryAttachment BinAttach : email.BinaryAttachments){
-                ContentVersion CVRecord = new ContentVersion();
-                CVRecord.Title = BinAttach.FileName;
-                CVRecord.VersionData = BinAttach.Body;
-                CVRecord.PathOnClient = '/' + BinAttach.FileName ;
-                CVRecords.add(CVRecord);
-            }
-        }
-        //Convert text attachments to PDF ContentVersion
-        if (email.TextAttachments != null && !email.TextAttachments.isEmpty()){
-            for (Messaging.InboundEmail.TextAttachment TextAttach : email.TextAttachments){
-                ContentVersion CVRecord = new ContentVersion();
-                CVRecord.Title = TextAttach.FileName;
-                CVRecord.VersionData = Blob.ToPDF(TextAttach.Body);
-                CVRecord.PathOnClient = '/' + TextAttach.FileName.Replace('.','') + '.pdf' ;
-                CVRecords.add(CVRecord);
-            }
-        }
-        //return only if Attachments exist
-        if(CVRecords != null && !CVRecords.isEmpty()){
-            return CVRecords;
-        }
-        else{
-            return null;
-        }
-    }
 }
